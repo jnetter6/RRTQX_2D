@@ -34,13 +34,13 @@ function sim_RRTQX()
   total_time = 3.0       # total planning time (move after this, and keep planning)
   slice_time = 1.0/10.0       # for saving data
 
-  envRad = 18.0 # 50.0          # environment spans -envRad to envRad in each dimension
+  envRad = 21.0 # 50.0          # environment spans -envRad to envRad in each dimension
   robotRad = 0.5
   # robotSensorRange = 0.4
   start3 = [-3.0 14.0] # 5*[0.0 -8.0]   # robot goes to here (start location of search tree) [15.0 -10.0]
   goal3 = [-7.0 -7.0] # [-40.0 40.0]    # robot comes from here (goal location of search tree) [-18.0 18.0]
-  start = [14.0 -5.0] # 5*[0.0 -8.0]   # robot goes to here (start location of search tree) [15.0 -10.0]
-  goal = [-12.0 12.0] # [-40.0 40.0]    # robot comes from here (goal location of search tree) [-18.0 18.0]
+  start = [-14.0 -15.0] # 5*[0.0 -8.0]   # robot goes to here (start location of search tree) [15.0 -10.0]
+  goal = [12.0 12.0] # [-40.0 40.0]    # robot comes from here (goal location of search tree) [-18.0 18.0]
   start4 = [14.0 -12.0] # 5*[0.0 -8.0]   # robot goes to here (start location of search tree) [15.0 -10.0]
   goal4 = [3.0 -6.0] # [-40.0 40.0]    # robot comes from here (goal location of search tree) [-18.0 18.0]
   start2 = [-12.0 17.0] # [-40.0 40.0]    # robot comes from here (goal location of search tree) [-18.0 18.0]
@@ -49,7 +49,7 @@ function sim_RRTQX()
 
   # start = [0.0 -8.]
   # goal = [-7.0 7.]
-  obstacleFile = "environments/CDC2020Test.txt" # Dynamic_5: ACC 20; Static_5: small envir;
+  obstacleFile = "environments/rand_Disc_grid_bookChapter.txt" # Dynamic_5: ACC 20; Static_5: small envir;
   # obstacleFile = "environments/empty.txt"
   # success(`mkdir experiments/$(expName)`)
   success(`cmd /c mkdir experiments/$(expName)`)
@@ -112,9 +112,9 @@ function sim_RRTQX()
   T = []
 
   push!(T, C)
-  push!(T, C2)
-  push!(T, C3)
-  push!(T, C4)
+  #push!(T, C2)
+  #push!(T, C3)
+  #push!(T, C4)
   N = (size(T)[1])
 
   multirrtqx(T, N, total_time, slice_time, 10.0, 100.0, changeThresh, algorithmName, MoveRobot, saveVideoData, saveTree, dataFile)
