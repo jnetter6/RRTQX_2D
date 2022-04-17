@@ -353,6 +353,116 @@ function kdFindNearestInSubtree(distanceFunction::Function, root::T,
   end
 end
 
+function kdFindNearestInSubtreeTerrain(distanceFunction::Function, root::T,
+  queryPoint::Array{Float64}, suggestedClosestNode::T,
+  suggestedClosestDist::Float64) where {T}
+
+  # walk down the tree as if the node would be inserted
+  parent::T = root
+  currentClosestNode::T = suggestedClosestNode
+  currentClosestDist::Float64 = suggestedClosestDist
+  while true
+    if queryPoint[parent.kdSplit] < parent.position[parent.kdSplit]
+      # traverse tree to the left
+      if !parent.kdChildLExist
+        # the queryPoint would be inserted as the left child of the parent
+        break
+      end
+      parent = parent.kdChildL
+      continue
+    else
+      # traverse tree to the right
+      if !parent.kdChildRExist
+        # the queryPoint would be inserted as the right child of the parent
+        break
+      end
+      parent = parent.kdChildR
+      continue
+    end
+  end
+
+  newDist::Float64 = distanceFunction(queryPoint,parent.position)
+  midNode = [((queryPoint[1]+parent.position[1])/2), ((queryPoint[2]+parent.position[2])/2)]
+  if ((Wdist(midNode, [0.0, 0.0]) < 5.0) || (Wdist(midNode, [-2.0, -2.0]) < 5.0) || (Wdist(midNode, [-4.0, -4.0]) < 5.0))
+    newDist = newDist *8.0
+  end
+  if newDist < currentClosestDist
+    currentClosestNode = parent
+    currentClosestDist = newDist
+  end
+
+  # now walk back up the tree (will break out when done)
+  while true
+    # now check if there could possibly be any closer nodes on the other
+    # side of the parent, if not then check grandparent etc.
+
+    parentHyperPlaneDist = (queryPoint[parent.kdSplit] - parent.position[parent.kdSplit])
+
+    if parentHyperPlaneDist > currentClosestDist
+      # then there could not be any closer nodes on the other side of the parent
+      # (and the parent itself is also too far away
+
+      if parent == root
+        # the parent is the root and we are done
+        return (currentClosestNode, currentClosestDist)
+      end
+
+      parent = parent.kdParent
+      continue
+    end
+
+    # if we are here, then there could be a closer node on the other side of the
+    # parent (including the parent itself)
+
+    # first check the parent itself (if it is not already the closest node)
+    if currentClosestNode != parent
+      newDist = distanceFunction(queryPoint,parent.position)
+      midNode = [((queryPoint[1]+parent.position[1])/2), ((queryPoint[2]+parent.position[2])/2)]
+      if ((Wdist(midNode, [0.0, 0.0]) < 5.0) || (Wdist(midNode, [-2.0, -2.0]) < 5.0) || (Wdist(midNode, [-4.0, -4.0]) < 5.0))
+        newDist = newDist *8.0
+      end
+      if newDist < currentClosestDist
+        currentClosestNode = parent
+        currentClosestDist = newDist
+      end
+    end
+
+    # now check on the other side of the parent
+    if queryPoint[parent.kdSplit] < parent.position[parent.kdSplit] && parent.kdChildRExist
+      # queryPoint is on the left side of the parent, so we need to look
+      # at the right side of it (if it exists)
+
+      # find right subtree dist
+
+      (Rnode, Rdist) = kdFindNearestInSubtreeTerrain(distanceFunction, parent.kdChildR, queryPoint, currentClosestNode, currentClosestDist)
+
+      if Rdist < currentClosestDist
+        currentClosestDist = Rdist
+        currentClosestNode = Rnode
+      end
+
+    elseif parent.position[parent.kdSplit] <= queryPoint[parent.kdSplit] && parent.kdChildLExist
+      # queryPoint is on the right side of the parent, so we need to look
+      # at the left side of it (if it exists)
+
+      # find left subtree dist
+
+      (Lnode, Ldist) = kdFindNearestInSubtreeTerrain(distanceFunction, parent.kdChildL, queryPoint, currentClosestNode, currentClosestDist)
+      if Ldist < currentClosestDist
+        currentClosestDist = Ldist
+        currentClosestNode = Lnode
+      end
+    end
+
+    if parent == root
+        # the parent is the root and we are done
+      return (currentClosestNode, currentClosestDist)
+    end
+
+    parent = parent.kdParent
+  end
+end
+
 # returns the nearest node to queryPoint and also its distance
 function kdFindNearest(tree::TKD, queryPoint::Array{Float64}) where {TKD}
   # initial search (only search if the space does not wrap around)
@@ -372,6 +482,36 @@ function kdFindNearest(tree::TKD, queryPoint::Array{Float64}) where {TKD}
       # now see if any points in the space are closer to this ghost
       distGhostToRoot = tree.distanceFunction(thisGhostPoint, tree.root.position)
       (thisLnode, thisLdist) = kdFindNearestInSubtree(tree.distanceFunction, tree.root, thisGhostPoint, tree.root, distGhostToRoot)
+
+      if thisLdist < Ldist
+        # found closer point
+        Ldist = thisLdist
+        Lnode = thisLnode
+      end
+    end
+  end
+
+  return (Lnode, Ldist)
+end
+
+function kdFindNearestTerrain(tree::TKD, queryPoint::Array{Float64}) where {TKD}
+  # initial search (only search if the space does not wrap around)
+  distToRoot::Float64 = tree.distanceFunction(queryPoint, tree.root.position)
+  (Lnode, Ldist) = kdFindNearestInSubtreeTerrain(tree.distanceFunction, tree.root, queryPoint, tree.root, distToRoot)
+
+  if tree.numWraps > 0
+    # if dimensions wrap around, we need to search vs. identities (ghosts)
+
+    pointIterator = ghostPointIterator{TKD}(tree, queryPoint)
+    while true
+      thisGhostPoint = getNextGhostPoint(pointIterator, Ldist)
+      if thisGhostPoint == nothing
+        break
+      end
+
+      # now see if any points in the space are closer to this ghost
+      distGhostToRoot = tree.distanceFunction(thisGhostPoint, tree.root.position)
+      (thisLnode, thisLdist) = kdFindNearestInSubtreeTerrain(tree.distanceFunction, tree.root, thisGhostPoint, tree.root, distGhostToRoot)
 
       if thisLdist < Ldist
         # found closer point

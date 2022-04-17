@@ -1207,7 +1207,9 @@ function multirrtqx(S::Array{TS}, N::Int64, total_planning_time::Float64, slice_
 
 
     # find closest old node to the new node
-    (closestNode, closestDist) = kdFindNearest(KD[i], newNode.position)
+    #(closestNode, closestDist) = kdFindNearest(KD[i], newNode.position)
+    (closestNode, closestDist) = kdFindNearestTerrain(KD[i], newNode.position)
+
 
     # saturate
     #if closestDist > delta && newNode != S.goalNode
@@ -1215,7 +1217,8 @@ function multirrtqx(S::Array{TS}, N::Int64, total_planning_time::Float64, slice_
     #end
 
     if closestDist > delta && newNode != S[i].goalNode
-      saturate(newNode.position, closestNode.position, delta)
+      #saturate(newNode.position, closestNode.position, delta)
+      saturateTerrain(newNode.position, closestNode.position, delta)
     end
 
 
@@ -1231,7 +1234,12 @@ function multirrtqx(S::Array{TS}, N::Int64, total_planning_time::Float64, slice_
     GC.enable(false)
 
     # extend
-    extend(S[i], KD[i], Q[i], newNode, closestNode, delta, hyberBallRad[i], S[i].moveGoal)
+    midNode = [((newNode.position[1]+closestNode.position[1])/2.0), ((newNode.position[2]+closestNode.position[2])/2.0)]
+    if ((Wdist(midNode, [0.0, 0.0]) < 5.0) || (Wdist(midNode, [-2.0, -2.0]) < 5.0) || (Wdist(midNode, [-4.0, -4.0]) < 5.0))
+      extendTerrain(S[i], KD[i], Q[i], newNode, closestNode, delta, hyberBallRad[i], S[i].moveGoal)
+    else
+      extend(S[i], KD[i], Q[i], newNode, closestNode, delta, hyberBallRad[i], S[i].moveGoal)
+    end
 
 
 

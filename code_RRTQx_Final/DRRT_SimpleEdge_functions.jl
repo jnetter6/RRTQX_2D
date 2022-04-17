@@ -73,6 +73,16 @@ function saturate(newPoint::Array{Float64}, closestPoint::Array{Float64}, delta)
   end
 end
 
+function saturateTerrain(newPoint::Array{Float64}, closestPoint::Array{Float64}, delta)
+  thisDist = dist(newPoint, closestPoint)
+  midNode = [((newPoint[1]+closestPoint[1])/2), ((newPoint[2]+closestPoint[2])/2)]
+  if ((Wdist(midNode, [0.0, 0.0]) < 5.0) || (Wdist(midNode, [-2.0, -2.0]) < 5.0) || (Wdist(midNode, [-4.0, -4.0]) < 5.0))
+    thisDist = thisDist*8.0
+  end
+  if thisDist > delta
+    newPoint = closestPoint  + (newPoint - closestPoint)*delta/thisDist
+  end
+end
 
 ################################### edge functions ################################
 ### Functions that interact with edges and not much else.                       ###
@@ -178,6 +188,12 @@ function calculateTrajectory(S::TS, edge::SimpleEdge) where {TS}
   edge.dist = dist(edge.startNode, edge.endNode)
   edge.distOriginal = edge.dist
   edge.Wdist = Wdist(edge.startNode, edge.endNode)
+end
+
+function calculateTrajectoryTerrain(S::TS, edge::SimpleEdge) where {TS}
+  edge.dist = dist(edge.startNode, edge.endNode)*8.0
+  edge.distOriginal = edge.dist*8.0
+  edge.Wdist = Wdist(edge.startNode, edge.endNode)*8.0
 end
 
 

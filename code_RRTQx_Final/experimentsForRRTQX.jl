@@ -34,7 +34,7 @@ function sim_RRTQX()
   total_time = 3.0       # total planning time (move after this, and keep planning)
   slice_time = 1.0/10.0       # for saving data
 
-  envRad = 21.0 # 50.0          # environment spans -envRad to envRad in each dimension
+  envRad = 16.0 # 50.0          # environment spans -envRad to envRad in each dimension
   robotRad = 0.5
   # robotSensorRange = 0.4
   start3 = [-3.0 14.0] # 5*[0.0 -8.0]   # robot goes to here (start location of search tree) [15.0 -10.0]
@@ -49,7 +49,7 @@ function sim_RRTQX()
 
   # start = [0.0 -8.]
   # goal = [-7.0 7.]
-  obstacleFile = "environments/rand_Disc_grid_bookChapter.txt" # Dynamic_5: ACC 20; Static_5: small envir;
+  obstacleFile = "environments/empty.txt" # Dynamic_5: ACC 20; Static_5: small envir;
   # obstacleFile = "environments/empty.txt"
   # success(`mkdir experiments/$(expName)`)
   success(`cmd /c mkdir experiments/$(expName)`)

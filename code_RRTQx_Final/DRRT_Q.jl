@@ -2493,6 +2493,104 @@ function extend(S::TCS, KD::TKD, Q::rrtXQueue,
   addToHeap(Q.Q, newNode)
 end
 
+function extendTerrain(S::TCS, KD::TKD, Q::rrtXQueue,
+  newNode::T, closestNode::T, delta::Float64, hyberBallRad::Float64,
+  moveGoal::T) where {T, TCS, TKD}
+
+  # find all nodes within the (shrinking) hyperball of (saturated) newNode
+  nodeList = kdFindWithinRange(KD, hyberBallRad, newNode.position)
+
+  # try to find and link to best parent, this also saves the edges from newNode
+  # to the neighbors in the field "tempEdge" of the neighbors. This saves time in
+  # the case that trajectory calculation is complicated.
+  findBestParent(S, newNode, nodeList, closestNode, true)
+
+  # if no parent was found then ignore this node
+  if !newNode.rrtParentUsed
+    emptyRangeList(nodeList)     # clean up
+    return
+  end
+
+  # for RRTx, need to add the new node to its parent's successor list
+  # place a (non-trajectory) reverse edge into newParent's sucessor
+  # list and save a pointer to its postion in that list. This edge
+  # is used to help keep track of successors and not for movement.
+  parentNode = newNode.rrtParentEdge.endNode
+  backEdge = newEdge(parentNode, newNode)
+  backEdge.dist = Inf
+  JlistPush(parentNode.SuccessorList, backEdge, Inf)
+  newNode.successorListItemInParent = parentNode.SuccessorList.front
+
+  # insert the new node into the KDTree
+  kdInsert(KD, newNode)
+
+  # second pass, if there was a parent, then link with neighbors  and rewire
+  # neighbors that would do better to use newNode as their parent.
+  # Note that the edges -from- newNode -to- its neighbors have been stored
+  # in "tempEdge" field of the neighbors
+  listItem = nodeList.front
+  for i = 1:nodeList.length
+    nearNode = listItem.data
+
+    # if edge from newNode to nearNode was valid
+    if listItem.key != Inf
+      # add to initial out neighbor list of newNode
+      # (allows information propogation from newNode to nearNode always)
+      makeInitialOutNeighborOf(nearNode, newNode, nearNode.tempEdge)
+
+      # add to current neighbor list of newNode (allows information propogation
+      # from newNode to nearNode and vise verse, but only while they are in D-Ball)
+      makeNeighborOf(nearNode, newNode, nearNode.tempEdge)
+    end
+
+    # in the general case the trajectories along edges are not simply
+    # the reverse of each other, therefore we need to calculate and
+    # check the trajectory along the edge from nearNode to newNode.
+    thisEdge = newEdge(nearNode, newNode)
+    calculateTrajectoryTerrain(S, thisEdge)
+
+    if validMove(S, thisEdge) && !explicitEdgeCheck(S, thisEdge)
+      # add to initial in neighbor list of newNode
+      # (allows information propogation from newNode to nearNode always)
+      makeInitialInNeighborOf(newNode, nearNode, thisEdge)
+
+
+      # add to current neighbor list of newNode (allows information propogation
+      # from newNode to nearNode and vise verse, but only while they are in D-Ball)
+      makeNeighborOf(newNode, nearNode, thisEdge)
+    else
+      # edge cannot be created
+      listItem = listItem.child   # iterate thorugh list
+      continue
+    end
+
+    # rewire neighbors that would do better to use this node as their parent
+    # unless they are not in the relivant portion of the space vs. moveGoal
+    if (nearNode.rrtLMC > newNode.rrtLMC + thisEdge.dist &&
+        newNode.rrtParentEdge.endNode != nearNode &&
+        newNode.rrtLMC + thisEdge.dist < moveGoal.rrtLMC)
+
+      # make this node the parent of the neighbor node
+      makeParentOf(newNode, nearNode, thisEdge, KD.root)
+
+      # recalculate tree cost of neighbor
+      oldLmc = nearNode.rrtLMC
+      nearNode.rrtLMC = newNode.rrtLMC + thisEdge.dist
+
+      # insert neighbor into priority queue if cost reduction is great enough
+      if oldLmc - nearNode.rrtLMC > Q.changeThresh && nearNode != KD.root
+        verifyInQueue(Q, nearNode)
+      end
+    end
+
+    listItem = listItem.child   # iterate thorugh list
+  end
+  emptyRangeList(nodeList)     # clean up
+
+  # insert the node into the piority queue
+  addToHeap(Q.Q, newNode)
+end
+
 
 ## this is the (non-initial) rewire function used by RRTx that is responsible
 ## for propogating changes through the graph
