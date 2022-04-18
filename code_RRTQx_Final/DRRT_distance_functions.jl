@@ -34,8 +34,21 @@ end
 ###################################################################################
 
 # returns the Euclidian distance
-euclidianDist(x::Array,y::Array) = sqrt(sum((x-y).^2))
-
+function euclidianDist(x::Array,y::Array)
+  d = sqrt(sum((x-y).^2))
+  m = ((x+y)/2)
+  x = [x[1] x[2]]
+  y = [y[1] y[2]]
+  m = [m[1] m[2]]
+  if ((sqrt(sum(x-[0.0 0.0]).^2) < 4.0) || (sqrt(sum(x-[-2.0 -2.0]).^2) < 4.0) || (sqrt(sum(x-[-4.0 -4.0]).^2) < 4.0))
+    d = d*2
+  elseif ((sqrt(sum(y-[0.0 0.0]).^2) < 4.0) || (sqrt(sum(y-[-2.0 -2.0]).^2) < 4.0) || (sqrt(sum(y-[-4.0 -4.0]).^2) < 4.0))
+    d = d*2
+  elseif ((sqrt(sum(m-[0.0 0.0]).^2) < 4.0) || (sqrt(sum(m-[-2.0 -2.0]).^2) < 4.0) || (sqrt(sum(m-[-4.0 -4.0]).^2) < 4.0))
+    d = d*2
+  end
+  return d
+end
 # returns the "straight-line" distance in a space containing [X Y Time Theta]
 # where theta exists on [0 2*pi] and wrapps around, i.e., 0 === 2*pi
 R3SDist(x::Array,y::Array) = (sqrt( sum((x[1:3]-y[1:3]).^2) + min(abs(x[4]-y[4]), min(x[4], y[4])+2.0*pi-max(x[4], y[4]))^2 ))
